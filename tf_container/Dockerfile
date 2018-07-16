@@ -10,7 +10,7 @@ RUN curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
         mv protoc3/bin/* /usr/local/bin/;\
         mv protoc3/include/* /usr/local/include/;\
         chown $USER /usr/local/bin/protoc;\
-        chown $USER /usr/local/bin/protoc;\
+        chown $USER /usr/local/bin/protoc;
 
 RUN apt-get install python-pil python-lxml python-tk -y; \
             pip install Cython; \
@@ -20,7 +20,7 @@ RUN apt-get install python-pil python-lxml python-tk -y; \
             pip install pillow; \
             pip install lxml; \
             pip install jupyter; \
-            pip install matplotlib; \
+            pip install matplotlib; 
 
 
 ENV PYTHONUNBUFFERED=TRUE
