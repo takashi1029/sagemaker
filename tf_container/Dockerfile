@@ -5,6 +5,7 @@ RUN apt-get install git -y
 RUN pip install tensorflow
 
 RUN curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip;\
+        apt-get install unzip;\
         unzip protoc-3.3.0-linux-x86_64.zip -d protoc3;\
         mv protoc3/bin/* /usr/local/bin/;\
         mv protoc3/include/* /usr/local/include/;\
