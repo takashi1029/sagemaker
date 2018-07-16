@@ -19,6 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 from object_detection.core import anchor_generator
+from object_detection.core import balanced_positive_negative_sampler as sampler
 from object_detection.core import box_list
 from object_detection.core import losses
 from object_detection.core import post_processing
@@ -83,7 +84,8 @@ class SsdMetaArchTest(test_case.TestCase):
   def _create_model(self,
                     apply_hard_mining=True,
                     normalize_loc_loss_by_codesize=False,
-                    add_background_class=True):
+                    add_background_class=True,
+                    random_example_sampling=False):
     is_training = False
     num_classes = 1
     mock_anchor_generator = MockAnchorGenerator2x2()
@@ -117,6 +119,11 @@ class SsdMetaArchTest(test_case.TestCase):
           num_hard_examples=None,
           iou_threshold=1.0)
 
+    random_example_sampler = None
+    if random_example_sampling:
+      random_example_sampler = sampler.BalancedPositiveNegativeSampler(
+          positive_fraction=0.5)
+
     code_size = 4
     model = ssd_meta_arch.SSDMetaArch(
         is_training,
@@ -141,7 +148,8 @@ class SsdMetaArchTest(test_case.TestCase):
         normalize_loc_loss_by_codesize=normalize_loc_loss_by_codesize,
         freeze_batchnorm=False,
         inplace_batchnorm_update=False,
-        add_background_class=add_background_class)
+        add_background_class=add_background_class,
+        random_example_sampler=random_example_sampler)
     return model, num_classes, mock_anchor_generator.num_anchors(), code_size
 
   def test_preprocess_preserves_shapes_with_dynamic_input_image(self):
@@ -235,21 +243,24 @@ class SsdMetaArchTest(test_case.TestCase):
                     (batch_size, None, None, 3),
                     (None, None, None, 3)]
 
-    expected_boxes = np.array([[[0, 0, .5, .5],
-                                [0, .5, .5, 1],
-                                [.5, 0, 1, .5],
-                                [0, 0, 0, 0],   # pruned prediction
-                                [0, 0, 0, 0]],  # padding
-                               [[0, 0, .5, .5],
-                                [0, .5, .5, 1],
-                                [.5, 0, 1, .5],
-                                [0, 0, 0, 0],  # pruned prediction
-                                [0, 0, 0, 0]]  # padding
-                              ])
-    expected_scores = np.array([[0, 0, 0, 0, 0],
-                                [0, 0, 0, 0, 0]])
-    expected_classes = np.array([[0, 0, 0, 0, 0],
-                                 [0, 0, 0, 0, 0]])
+    expected_boxes = [
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0],  # pruned prediction
+            [0, 0, 0, 0]
+        ],  # padding
+        [
+            [0, 0, .5, .5],
+            [0, .5, .5, 1],
+            [.5, 0, 1, .5],
+            [0, 0, 0, 0],  # pruned prediction
+            [0, 0, 0, 0]
+        ]
+    ]  # padding
+    expected_scores = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
+    expected_classes = [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
     expected_num_detections = np.array([3, 3])
 
     for input_shape in input_shapes:
@@ -274,7 +285,11 @@ class SsdMetaArchTest(test_case.TestCase):
                                       input_placeholder:
                                       np.random.uniform(
                                           size=(batch_size, 2, 2, 3))})
-      self.assertAllClose(detections_out['detection_boxes'], expected_boxes)
+      for image_idx in range(batch_size):
+        self.assertTrue(
+            test_utils.first_rows_close_as_set(
+                detections_out['detection_boxes'][image_idx].tolist(),
+                expected_boxes[image_idx]))
       self.assertAllClose(detections_out['detection_scores'], expected_scores)
       self.assertAllClose(detections_out['detection_classes'], expected_classes)
       self.assertAllClose(detections_out['num_detections'],
@@ -421,7 +436,7 @@ class SsdMetaArchTest(test_case.TestCase):
 
   def test_restore_map_for_detection_ckpt(self):
     model, _, _, _ = self._create_model()
-    model.predict(tf.constant(np.array([[[0, 0], [1, 1]], [[1, 0], [0, 1]]],
+    model.predict(tf.constant(np.array([[[[0, 0], [1, 1]], [[1, 0], [0, 1]]]],
                                        dtype=np.float32)),
                   true_image_shapes=None)
     init_op = tf.global_variables_initializer()
@@ -493,6 +508,47 @@ class SsdMetaArchTest(test_case.TestCase):
       self.assertIsInstance(var_map, dict)
       self.assertIn('another_variable', var_map)
 
+  def test_loss_results_are_correct_with_random_example_sampling(self):
+
+    with tf.Graph().as_default():
+      _, num_classes, num_anchors, _ = self._create_model(
+          random_example_sampling=True)
+    print num_classes, num_anchors
+
+    def graph_fn(preprocessed_tensor, groundtruth_boxes1, groundtruth_boxes2,
+                 groundtruth_classes1, groundtruth_classes2):
+      groundtruth_boxes_list = [groundtruth_boxes1, groundtruth_boxes2]
+      groundtruth_classes_list = [groundtruth_classes1, groundtruth_classes2]
+      model, _, _, _ = self._create_model(random_example_sampling=True)
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      prediction_dict = model.predict(
+          preprocessed_tensor, true_image_shapes=None)
+      loss_dict = model.loss(prediction_dict, true_image_shapes=None)
+      return (_get_value_for_matching_key(loss_dict, 'Loss/localization_loss'),
+              _get_value_for_matching_key(loss_dict,
+                                          'Loss/classification_loss'))
+
+    batch_size = 2
+    preprocessed_input = np.random.rand(batch_size, 2, 2, 3).astype(np.float32)
+    groundtruth_boxes1 = np.array([[0, 0, .5, .5]], dtype=np.float32)
+    groundtruth_boxes2 = np.array([[0, 0, .5, .5]], dtype=np.float32)
+    groundtruth_classes1 = np.array([[1]], dtype=np.float32)
+    groundtruth_classes2 = np.array([[1]], dtype=np.float32)
+    expected_localization_loss = 0.0
+    # Among 4 anchors (1 positive, 3 negative) in this test, only 2 anchors are
+    # selected (1 positive, 1 negative) since random sampler will adjust number
+    # of negative examples to make sure positive example fraction in the batch
+    # is 0.5.
+    expected_classification_loss = (
+        batch_size * 2 * (num_classes + 1) * np.log(2.0))
+    (localization_loss, classification_loss) = self.execute_cpu(
+        graph_fn, [
+            preprocessed_input, groundtruth_boxes1, groundtruth_boxes2,
+            groundtruth_classes1, groundtruth_classes2
+        ])
+    self.assertAllClose(localization_loss, expected_localization_loss)
+    self.assertAllClose(classification_loss, expected_classification_loss)
 
 if __name__ == '__main__':
   tf.test.main()
