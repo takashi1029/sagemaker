@@ -34,6 +34,7 @@ RUN git clone https://github.com/cocodataset/cocoapi.git;\
         make;\
         cp -r pycocotools /opt/program/;
 
+RUN chmod -R 755 /opt/program
 WORKDIR /opt/program
 
 RUN /bin/bash -c "protoc object_detection/protos/*.proto --python_out=./"
