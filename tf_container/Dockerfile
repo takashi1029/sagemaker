@@ -9,8 +9,6 @@ RUN curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
         unzip protoc-3.3.0-linux-x86_64.zip -d protoc3;\
         mv protoc3/bin/* /usr/local/bin/;\
         mv protoc3/include/* /usr/local/include/;\
-        chown $USER /usr/local/bin/protoc;\
-        chown $USER /usr/local/bin/protoc;
 
 RUN apt-get install python-pil python-lxml python-tk -y; \
             pip install Cython; \
