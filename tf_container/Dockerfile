@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get install git -y
 RUN pip install tensorflow
 
-RUN apt-get install protobuf-compiler python-pil python-lxml python-tk -y; \
+RUN apt-get install python-pil python-lxml python-tk -y; \
             pip install Cython; \
             pip install jupyter; \
             pip install matplotlib; \
@@ -12,7 +12,8 @@ RUN apt-get install protobuf-compiler python-pil python-lxml python-tk -y; \
             pip install pillow; \
             pip install lxml; \
             pip install jupyter; \
-            pip install matplotlib;
+            pip install matplotlib; \
+            pip install protobuf
 
 
 ENV PYTHONUNBUFFERED=TRUE
