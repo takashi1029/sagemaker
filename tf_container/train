@@ -1,5 +1,5 @@
 #!/bin/bash
 
-python object_detection/mdoel_main.py \
+python object_detection/model_main.py \
     --alsologtostderr \
     --pipeline_config_path="samples/configs/ssd_mobilenet_v2_coco.config" 
