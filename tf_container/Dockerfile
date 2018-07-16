@@ -24,6 +24,7 @@ RUN mkdir /opt/program
 RUN mkdir /opt/program/object_detection;\
         mkdir  /opt/program/slim
 COPY train /opt/program/
+COPY ssd_mobilenet_v2_coco.config /opt/program
 COPY object_detection /opt/program/object_detection
 COPY slim /opt/program/slim
 
