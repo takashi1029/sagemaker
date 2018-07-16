@@ -2,4 +2,4 @@
 
 python object_detection/model_main.py \
     --alsologtostderr \
-    --pipeline_config_path="ssd_mobilenet_v2_coco.config" 
+    --pipeline_config_path="ssdlite_mobilenet_v2_coco.config" 
