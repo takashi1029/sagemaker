@@ -29,6 +29,7 @@ RUN mkdir /opt/program
 
 RUN mkdir /opt/program/object_detection;\
     mkdir  /opt/program/slim; \
+    mkdir /opt/ml; \
     mkdir /opt/ml/model 
 COPY train /opt/program/
 COPY ssdlite_mobilenet_v2_coco.config /opt/program

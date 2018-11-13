@@ -3,10 +3,10 @@
 python object_detection/model_main.py \
     --alsologtostderr \
     --pipeline_config_path="ssdlite_mobilenet_v2_coco.config" \
-    --model_dir="/tmp/"
+    --model_dir="/tmp/model"
 
 python object_detection/export_inference_graph.py \
     --input_type=image_tensor \
     --pipeline_config_path="ssdlite_mobilenet_v2_coco.config" \
-    --trained_checkpoint_prefix="/tmp/model.ckpt"
+    --trained_checkpoint_prefix="/tmp/model/model.ckpt-20" \
     --output_directory="/opt/ml/model"
