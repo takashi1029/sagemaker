@@ -2,7 +2,7 @@ FROM python:2.7
 
 RUN apt-get update
 RUN apt-get install git -y
-RUN pip install tensorflow
+RUN pip install tensorflow==1.11.0
 
 RUN curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip;\
         apt-get install unzip;\
